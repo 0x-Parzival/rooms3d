@@ -130,22 +130,16 @@
             const offset = -currentIndex * 100;
             carousel.style.transform = `translateX(${offset}%)`;
 
-            // Lazy load current room and unload others
+            // Manage pause/resume state for rooms
             const frames = document.querySelectorAll('.room-frame');
             frames.forEach((frame, index) => {
-                const src = frame.getAttribute('data-src');
+                const contentWindow = frame.contentWindow;
+                if (!contentWindow) return;
+
                 if (index === currentIndex) {
-                    if (!frame.src || frame.src === window.location.href) { // Check if empty or self (some browsers)
-                        frame.src = src;
-                    }
+                    contentWindow.postMessage({ type: 'resume' }, '*');
                 } else {
-                    // Slight delay to allow transition to finish before unloading - usually 500ms
-                    // But to be safe and simple, we can unload after a timeout
-                    setTimeout(() => {
-                        if (index !== currentIndex) {
-                            frame.removeAttribute('src');
-                        }
-                    }, 600);
+                    contentWindow.postMessage({ type: 'pause' }, '*');
                 }
             });
         }
@@ -187,14 +181,22 @@
             }
         });
 
-        // Iframe background injection
+        // Iframe background injection and initial setup
         window.addEventListener('load', () => {
-            const frames = document.querySelectorAll('iframe');
+            const frames = document.querySelectorAll('.room-frame');
+
+            // Preload all frames if they aren't already (though we are removing lazy load now)
             frames.forEach(frame => {
+                const src = frame.getAttribute('data-src');
+                if (!frame.src || frame.src === window.location.href) {
+                    frame.src = src;
+                }
+            });
+
+            frames.forEach((frame, index) => {
                 frame.addEventListener('load', () => {
                     try {
-                        const doc = frame.contentDocument;
-                        // doc.body.style.backgroundColor = '#1a1a1a'; // User said "same color", we can force black/dark.
+                        const doc = frame.contentWindow.document;
 
                         // Pass key events to parent
                         doc.addEventListener('keydown', (e) => {
@@ -208,11 +210,19 @@
                         // Hide scrollbars
                         doc.body.style.overflow = 'hidden';
 
+                        // Initial state: pause properly if not the first room
+                        if (index !== currentIndex) {
+                            frame.contentWindow.postMessage({ type: 'pause' }, '*');
+                        }
+
                     } catch (e) {
-                        // Ignore cross-origin issues
+                        // Ignore cross-origin issues, but postMessage will still work
                     }
                 });
             });
+
+            // Initial update to ensure correct state
+            // setTimeout(() => updateCarousel(), 1000); 
         });
 
     </script>
