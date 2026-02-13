@@ -127,7 +127,8 @@
         let autoPlayTimer;
 
         function updateCarousel() {
-            const offset = -currentIndex * 100;
+            const shift = 15; // Shift rooms to the left
+            const offset = -currentIndex * 100 - shift;
             carousel.style.transform = `translateX(${offset}%)`;
 
             // Manage pause/resume state for rooms
@@ -185,13 +186,24 @@
         window.addEventListener('load', () => {
             const frames = document.querySelectorAll('.room-frame');
 
-            // Preload all frames if they aren't already (though we are removing lazy load now)
-            frames.forEach(frame => {
-                const src = frame.getAttribute('data-src');
-                if (!frame.src || frame.src === window.location.href) {
-                    frame.src = src;
-                }
-            });
+            // Staggered loading: Load current room immediately
+            const currentFrame = frames[currentIndex];
+            const currentSrc = currentFrame.getAttribute('data-src');
+            if (!currentFrame.src || currentFrame.src === window.location.href) {
+                currentFrame.src = currentSrc;
+            }
+
+            // Load other rooms after a delay to prioritize initial render
+            setTimeout(() => {
+                frames.forEach((frame, index) => {
+                    if (index !== currentIndex) {
+                        const src = frame.getAttribute('data-src');
+                        if (!frame.src || frame.src === window.location.href) {
+                            frame.src = src;
+                        }
+                    }
+                });
+            }, 2500); // 2.5s delay for background rooms
 
             frames.forEach((frame, index) => {
                 frame.addEventListener('load', () => {
@@ -220,9 +232,6 @@
                     }
                 });
             });
-
-            // Initial update to ensure correct state
-            // setTimeout(() => updateCarousel(), 1000); 
         });
 
     </script>
