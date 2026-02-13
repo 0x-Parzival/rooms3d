@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Room Carousel</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            font-family: sans-serif;
+        }
+
+        .carousel-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.5s ease-in-out;
+        }
+
+        .room-wrapper {
+            position: relative;
+            min-width: 100%;
+            height: 100%;
+        }
+
+        .room-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Navigation Arrows */
+        .nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.0);
+            /* Transparent default */
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 4rem;
+            padding: 20px;
+            cursor: pointer;
+            /* Change to none for "cursor movement"? No, "rooms move with cursor" implies 3D. */
+            z-index: 200;
+            transition: color 0.3s, background 0.3s;
+            user-select: none;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            outline: none;
+        }
+
+        .nav-btn:hover {
+            color: rgba(255, 255, 255, 1);
+            background: rgba(0, 0, 0, 0.1);
+            /* Subtle highlight area */
+        }
+
+        .prev-btn {
+            left: 0;
+            justify-content: flex-start;
+            width: 100px;
+            /* Hit area */
+        }
+
+        .next-btn {
+            right: 0;
+            justify-content: flex-end;
+            width: 100px;
+            /* Hit area */
+        }
+
+        /* Hide label if desired, or keep it subtle */
+        .room-label {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+            font-weight: bold;
+            z-index: 100;
+            pointer-events: none;
+            letter-spacing: 2px;
+            display: none;
+            /* User didn't ask to remove, but said "without text" for arrows. */
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="carousel-container" id="carousel">
+        <!-- Room 1 -->
+        <div class="room-wrapper">
+            <iframe class="room-frame" src="./ThreeJS-Room01/index.html"
+                data-src="./ThreeJS-Room01/index.html"></iframe>
+        </div>
+
+        <!-- Room 14 -->
+        <div class="room-wrapper">
+            <iframe class="room-frame" data-src="./ThreeJS-Room14/dist/index.html"></iframe>
+        </div>
+        <!-- Room 5 -->
+        <div class="room-wrapper">
+            <iframe class="room-frame" data-src="./ThreeJS-Room05/index.html"></iframe>
+        </div>
+    </div>
+
+    <!-- Arrow Controls -->
+    <div class="nav-btn prev-btn" onclick="manualPrev()">&#8249;</div> <!-- Single guillemet like arrow -->
+    <div class="nav-btn next-btn" onclick="manualNext()">&#8250;</div>
+
+    <script>
+        const carousel = document.getElementById('carousel');
+        let currentIndex = 0;
+        const totalRooms = 3;
+        let autoPlayTimer;
+
+        function updateCarousel() {
+            const offset = -currentIndex * 100;
+            carousel.style.transform = `translateX(${offset}%)`;
+
+            // Lazy load current room and unload others
+            const frames = document.querySelectorAll('.room-frame');
+            frames.forEach((frame, index) => {
+                const src = frame.getAttribute('data-src');
+                if (index === currentIndex) {
+                    if (!frame.src || frame.src === window.location.href) { // Check if empty or self (some browsers)
+                        frame.src = src;
+                    }
+                } else {
+                    // Slight delay to allow transition to finish before unloading - usually 500ms
+                    // But to be safe and simple, we can unload after a timeout
+                    setTimeout(() => {
+                        if (index !== currentIndex) {
+                            frame.removeAttribute('src');
+                        }
+                    }, 600);
+                }
+            });
+        }
+
+        function nextRoom() {
+            currentIndex = (currentIndex + 1) % totalRooms;
+            updateCarousel();
+        }
+
+        function prevRoom() {
+            currentIndex = (currentIndex - 1 + totalRooms) % totalRooms;
+            updateCarousel();
+        }
+
+        function resetTimer() {
+            clearInterval(autoPlayTimer);
+            autoPlayTimer = setInterval(nextRoom, 10000);
+        }
+
+        function manualNext() {
+            nextRoom();
+            resetTimer();
+        }
+
+        function manualPrev() {
+            prevRoom();
+            resetTimer();
+        }
+
+        // Start Auto-play
+        resetTimer();
+
+        // Keyboard Navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') {
+                manualNext();
+            } else if (e.key === 'ArrowLeft') {
+                manualPrev();
+            }
+        });
+
+        // Iframe background injection
+        window.addEventListener('load', () => {
+            const frames = document.querySelectorAll('iframe');
+            frames.forEach(frame => {
+                frame.addEventListener('load', () => {
+                    try {
+                        const doc = frame.contentDocument;
+                        // doc.body.style.backgroundColor = '#1a1a1a'; // User said "same color", we can force black/dark.
+
+                        // Pass key events to parent
+                        doc.addEventListener('keydown', (e) => {
+                            if (e.key === 'ArrowRight') {
+                                manualNext();
+                            } else if (e.key === 'ArrowLeft') {
+                                manualPrev();
+                            }
+                        });
+
+                        // Hide scrollbars
+                        doc.body.style.overflow = 'hidden';
+
+                    } catch (e) {
+                        // Ignore cross-origin issues
+                    }
+                });
+            });
+        });
+
+    </script>
+</body>
+
+</html>
